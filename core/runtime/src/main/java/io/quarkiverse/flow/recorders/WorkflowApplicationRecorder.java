@@ -40,28 +40,34 @@ public class WorkflowApplicationRecorder {
             final WorkflowApplication.Builder builder = WorkflowApplication.builder()
                     .withExpressionFactory(new JQExpressionFactory(container.instance(JQScopeSupplier.class).get()));
 
-            InstanceHandle<MicrometerExecutionListener> instance = container
-                    .instance(MicrometerExecutionListener.class);
-            if (instance.isAvailable()) {
-                builder.withListener(instance.get());
-            }
-
-            if (tracingEnabled) {
-                LOG.info("Flow: Tracing enabled");
-                builder.withListener(new TraceLoggerExecutionListener());
-            }
-
+            this.injectTraceLogger(tracingEnabled, builder);
             this.injectEventConsumers(container, builder);
             this.injectEventPublishers(container, builder);
             this.injectSecretManager(container, builder);
             this.injectConfigManager(container, builder);
             this.injectHttpClientProvider(container, builder);
+            this.injectMicrometerExecutionListener(container, builder);
 
             WorkflowApplication app = builder.build();
 
             shutdownContext.addShutdownTask(app::close);
             return app;
         };
+    }
+
+    private void injectTraceLogger(boolean tracingEnabled, WorkflowApplication.Builder builder) {
+        if (tracingEnabled) {
+            LOG.info("Flow: Tracing enabled");
+            builder.withListener(new TraceLoggerExecutionListener());
+        }
+    }
+
+    private void injectMicrometerExecutionListener(ArcContainer container, WorkflowApplication.Builder builder) {
+        InstanceHandle<MicrometerExecutionListener> instance = container
+                .instance(MicrometerExecutionListener.class);
+        if (instance.isAvailable()) {
+            builder.withListener(instance.get());
+        }
     }
 
     private void injectEventConsumers(final ArcContainer container, final WorkflowApplication.Builder builder) {
