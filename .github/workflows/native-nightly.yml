@@ -1,0 +1,178 @@
+name: Native Compilation Nightly
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  QUARKUS_LANGCHAIN4J_OLLAMA_CHAT_MODEL_MODEL_ID: qwen2.5:3b-instruct-q4_K_M
+  
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  native-build:
+    name: Native Build (JDK 25)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Setup Ollama
+        uses: ai-action/setup-ollama@v2
+
+      - uses: actions/cache@v5
+        with:
+          path: ~/.ollama
+          key: ${{ runner.os }}-ollama
+
+      - name: Run ${{ env.QUARKUS_LANGCHAIN4J_OLLAMA_CHAT_MODEL_MODEL_ID }} model
+        run: ollama run ${{ env.QUARKUS_LANGCHAIN4J_OLLAMA_CHAT_MODEL_MODEL_ID }}
+
+      - name: Build with Maven (Native, Mandrel)
+        id: native-build
+        continue-on-error: true
+        run: >
+          mvn -B install -Dnative
+          -Dquarkus.native.container-build
+          -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-25
+
+      - name: Check if issue exists
+        id: check-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: 'native-nightly-ci',
+              per_page: 1
+            });
+            
+            const issue = issues.data[0];
+            if (issue) {
+              core.setOutput('issue-number', issue.number);
+              core.setOutput('issue-state', issue.state);
+              core.setOutput('issue-exists', 'true');
+            } else {
+              core.setOutput('issue-exists', 'false');
+            }
+
+      - name: Create or reopen issue on failure
+        if: steps.native-build.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueExists = '${{ steps.check-issue.outputs.issue-exists }}' === 'true';
+            const issueNumber = '${{ steps.check-issue.outputs.issue-number }}';
+            const issueState = '${{ steps.check-issue.outputs.issue-state }}';
+            
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const timestamp = new Date().toISOString();
+            
+            const body = `## Native Compilation Nightly CI Failed
+            
+            The native compilation tests have failed in the nightly CI run.
+            
+            **Run Details:**
+            - Workflow Run: ${runUrl}
+            - Timestamp: ${timestamp}
+            - JDK Version: 25
+            - Builder Image: quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-25
+            
+            **Action Required:**
+            @quarkiverse/quarkiverse-flow-triage please investigate and fix the native compilation issues.
+            
+            This issue will be automatically updated on each failed run until resolved.`;
+            
+            if (!issueExists) {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🔴 Native Compilation Nightly CI Failure',
+                body: body,
+                labels: ['native-nightly-ci', 'bug']
+              });
+              console.log('Created new issue for native compilation failure');
+            } else if (issueState === 'closed') {
+              // Reopen closed issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issueNumber),
+                state: 'open'
+              });
+              
+              // Add comment about reopening
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issueNumber),
+                body: `## Issue Reopened - Native Compilation Still Failing
+                
+                ${body}`
+              });
+              console.log(`Reopened issue #${issueNumber}`);
+            } else {
+              // Issue is already open, add a comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(issueNumber),
+                body: `## Native Compilation Still Failing
+                
+                ${body}`
+              });
+              console.log(`Added comment to existing issue #${issueNumber}`);
+            }
+
+      - name: Close issue on success
+        if: steps.native-build.outcome == 'success' && steps.check-issue.outputs.issue-exists == 'true' && steps.check-issue.outputs.issue-state == 'open'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = parseInt('${{ steps.check-issue.outputs.issue-number }}');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const timestamp = new Date().toISOString();
+            
+            // Add success comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## ✅ Native Compilation Fixed
+              
+              The native compilation tests are now passing in the nightly CI.
+              
+              **Run Details:**
+              - Workflow Run: ${runUrl}
+              - Timestamp: ${timestamp}
+              
+              Closing this issue. It will be automatically reopened if the tests fail again.`
+            });
+            
+            // Close the issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed'
+            });
+            
+            console.log(`Closed issue #${issueNumber} - native compilation is now passing`);
