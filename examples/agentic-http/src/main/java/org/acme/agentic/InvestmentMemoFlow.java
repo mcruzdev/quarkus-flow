@@ -9,7 +9,7 @@ import io.serverlessworkflow.api.types.Workflow;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
-import org.eclipse.microprofile.config.ConfigProvider;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
@@ -23,7 +23,7 @@ public class InvestmentMemoFlow extends Flow {
 
     private final InvestmentAnalystAgent analyst;
 
-    @ConfigProperty(name = "org.acme.agentic.market-data.url")
+    @ConfigProperty(name = "org.acme.agentic.market-data.url", defaultValue = "http://localhost:8080/market-data/{ticker}")
     String marketDataUrl;
 
     @Inject
