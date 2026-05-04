@@ -183,8 +183,8 @@ class FlowProcessor {
         String flowSubclassIdentifier = WorkflowNamingConverter.generateFlowClassIdentifier(
                 workflow.namespace(), workflow.name(), this.flowDefinitionsConfig.namespace().prefix());
 
-        String identifier = this.flowDefinitionsConfig.namingStrategy() == FlowDefinitionsConfig.NamingStrategy.REGULAR
-                ? workflow.regularIdentifier()
+        String identifier = this.flowDefinitionsConfig.namingStrategy() == FlowDefinitionsConfig.NamingStrategy.SPEC
+                ? workflow.specIdentifier()
                 : flowSubclassIdentifier;
 
         beans.produce(produceSyntheticWorkflowDefinitionBean(identifier,
@@ -245,7 +245,7 @@ class FlowProcessor {
      * }
      * </pre>
      * <p>
-     * When {@code regularIdentifier} is {@code false}, the CDI bean identifier is prefixed with
+     * When {@code specIdentifier} is {@code false}, the CDI bean identifier is prefixed with
      * {@code Normal}, but the injected {@code workflowDefinition} field still uses {@code className}
      * as its {@code @Identifier} value.
      */
@@ -255,8 +255,8 @@ class FlowProcessor {
         String flowSubclassIdentifier = WorkflowNamingConverter.generateFlowClassIdentifier(
                 workflow.namespace(), workflow.name(), this.flowDefinitionsConfig.namespace().prefix());
 
-        String identifier = flowDefinitionsConfig.namingStrategy() == FlowDefinitionsConfig.NamingStrategy.REGULAR
-                ? workflow.regularIdentifier()
+        String identifier = flowDefinitionsConfig.namingStrategy() == FlowDefinitionsConfig.NamingStrategy.SPEC
+                ? workflow.specIdentifier()
                 : flowSubclassIdentifier;
 
         try (ClassCreator creator = ClassCreator.builder()

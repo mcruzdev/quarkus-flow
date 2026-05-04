@@ -45,7 +45,7 @@ Naming strategy to be used when generating `Identifier++#++value()` for `io.quar
 Given a workflow definition with namespace (`namespace: foo`) name (`name: bar`):
 
  - If the naming strategy is `class`, the generated identifier will be `foo.Bar`.
- - If the naming strategy is `regular`, the generated identifier will be `foo:bar`.
+ - If the naming strategy is `spec`, the generated identifier will be `foo:bar`.
 
 
 ifdef::add-copy-button-to-env-var[]
@@ -55,8 +55,8 @@ ifndef::add-copy-button-to-env-var[]
 Environment variable: `+++QUARKUS_FLOW_DEFINITIONS_NAMING_STRATEGY+++`
 endif::add-copy-button-to-env-var[]
 --
-a|`regular`, `class`
-|`+++regular+++`
+a|`spec`, `class`
+|`+++spec+++`
 
 a|icon:lock[title=Fixed at build time] [[quarkus-flow_quarkus-flow-definitions-namespace-prefix]] [.property-path]##link:#quarkus-flow_quarkus-flow-definitions-namespace-prefix[`+++quarkus.flow.definitions.namespace.prefix+++`]##
 ifdef::add-copy-button-to-config-props[]

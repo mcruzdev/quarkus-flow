@@ -16,7 +16,7 @@ import io.smallrye.config.WithDefault;
 public interface FlowDefinitionsConfig {
 
     enum NamingStrategy {
-        REGULAR("regular"),
+        SPEC("spec"),
         CLASS("class");
 
         private final String configValue;
@@ -52,10 +52,10 @@ public interface FlowDefinitionsConfig {
      * Given a workflow definition with namespace (<code>namespace: foo</code>) name (<code>name: bar</code>):
      * <ul>
      * <li>If the naming strategy is <code>class</code>, the generated identifier will be <code>foo.Bar</code>.</li>
-     * <li>If the naming strategy is <code>regular</code>, the generated identifier will be <code>foo:bar</code>.</li>
+     * <li>If the naming strategy is <code>spec</code>, the generated identifier will be <code>foo:bar</code>.</li>
      * </ul>
      */
-    @WithDefault("regular")
+    @WithDefault("spec")
     NamingStrategy namingStrategy();
 
     NamespaceConfig namespace();
