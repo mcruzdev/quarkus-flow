@@ -1,7 +1,5 @@
 package io.quarkiverse.flow.testing;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -13,7 +11,6 @@ import io.quarkiverse.flow.testing.events.EventType;
 import io.quarkiverse.flow.testing.events.RecordedWorkflowEvent;
 import io.serverlessworkflow.impl.WorkflowInstance;
 import io.serverlessworkflow.impl.WorkflowModel;
-import org.jspecify.annotations.NonNull;
 
 /**
  * Fluent API for asserting on workflow event sequences.
@@ -636,8 +633,6 @@ public class FluentEventAssertions {
                 .orElseThrow(() -> new AssertionError(
                         "No TASK_COMPLETED event found for task: " + firstTask));
     }
-
-
 
     /**
      * Asserts that the workflow completed within the specified duration.
