@@ -10,8 +10,10 @@ import io.quarkus.runtime.LaunchMode;
 
 public class FlowTestingProcessor {
 
-    private static final DotName TEST_WORKFLOW_EXECUTION_LISTENER = DotName.createSimple("io.quarkiverse.flow.testing.TestWorkflowExecutionListener");
-    private static final DotName WORKFLOW_EVENT_RECORDER = DotName.createSimple("io.quarkiverse.flow.testing.WorkflowEventRecorder");
+    private static final DotName TEST_WORKFLOW_EXECUTION_LISTENER = DotName
+            .createSimple("io.quarkiverse.flow.testing.TestWorkflowExecutionListener");
+    private static final DotName WORKFLOW_EVENT_RECORDER = DotName
+            .createSimple("io.quarkiverse.flow.testing.WorkflowEventRecorder");
     private static final DotName WORKFLOW_EVENT_STORE = DotName.createSimple("io.quarkiverse.flow.testing.WorkflowEventStore");
 
     @BuildStep
@@ -22,8 +24,7 @@ public class FlowTestingProcessor {
                     .addBeanClasses(
                             TEST_WORKFLOW_EXECUTION_LISTENER.toString(),
                             WORKFLOW_EVENT_RECORDER.toString(),
-                            WORKFLOW_EVENT_STORE.toString()
-                    )
+                            WORKFLOW_EVENT_STORE.toString())
                     .build();
         }
         return null;
