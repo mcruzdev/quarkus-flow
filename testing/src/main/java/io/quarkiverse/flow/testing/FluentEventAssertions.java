@@ -558,80 +558,111 @@ public class FluentEventAssertions {
     }
 
     /**
-     * Asserts that a task completed before or at the same time as another task.
-     * Allows equal timestamps. For strict ordering, use {@link #taskCompletedStrictlyBefore(String, String)}.
+     * Entry point for fluent task-completion ordering assertions.
+     * Resolves the {@code TASK_COMPLETED} event for the given task and returns a
+     * {@link TaskCompletedAssertions} that lets you compare its timestamp against another task.
      *
-     * @param firstTask the task that should complete first
-     * @param secondTask the task that should complete second
-     * @return this for method chaining
+     * <pre>
+     * FluentEventAssertions.assertThat(eventStore)
+     *         .assertTaskCompleted("taskA").completedBefore("taskB")
+     *         .assertTaskCompleted("taskA").completedBeforeOrEqualTo("taskB")
+     *         .assertTaskCompleted("taskB").completedAfter("taskA")
+     *         .assertTaskCompleted("taskB").completedAfterOrEqualTo("taskA");
+     * </pre>
+     *
+     * @param taskName the task whose completion event is the subject of the assertion
+     * @return a {@link TaskCompletedAssertions} scoped to the resolved event
+     * @throws AssertionError if no {@code TASK_COMPLETED} event is found for {@code taskName}
      */
-    public FluentEventAssertions taskCompletedBefore(String firstTask, String secondTask) {
-        RecordedWorkflowEvent firstEvent = assertTaskCompleted(firstTask);
-        RecordedWorkflowEvent secondEvent = assertTaskCompleted(secondTask);
-        Assertions.assertThat(firstEvent.getTimestamp())
-                .as("Task '%s' should complete before or at the same time as task '%s'", firstTask, secondTask)
-                .isBeforeOrEqualTo(secondEvent.getTimestamp());
-        return this;
+    public TaskCompletedAssertions assertTaskCompleted(String taskName) {
+        return new TaskCompletedAssertions(findTaskCompletedEvent(taskName), taskName, this);
     }
 
     /**
-     * Asserts that a task completed strictly before another task, using strict timestamp comparison.
-     * Unlike {@link #taskCompletedBefore(String, String)}, this method does not allow equal timestamps.
-     *
-     * @param firstTask the task that should complete first
-     * @param secondTask the task that should complete second
-     * @return this for method chaining
+     * Fluent assertions for comparing the completion timestamp of one task against another.
+     * Instances are created via {@link FluentEventAssertions#assertTaskCompleted(String)}.
      */
-    public FluentEventAssertions taskCompletedStrictlyBefore(String firstTask, String secondTask) {
-        RecordedWorkflowEvent firstEvent = assertTaskCompleted(firstTask);
-        RecordedWorkflowEvent secondEvent = assertTaskCompleted(secondTask);
-        Assertions.assertThat(firstEvent.getTimestamp())
-                .as("Task '%s' should complete strictly before task '%s'", firstTask, secondTask)
-                .isBefore(secondEvent.getTimestamp());
-        return this;
+    public final class TaskCompletedAssertions {
+
+        private final RecordedWorkflowEvent subject;
+        private final String subjectName;
+        private final FluentEventAssertions parent;
+
+        private TaskCompletedAssertions(RecordedWorkflowEvent subject, String subjectName,
+                FluentEventAssertions parent) {
+            this.subject = subject;
+            this.subjectName = subjectName;
+            this.parent = parent;
+        }
+
+        /**
+         * Asserts that this task completed strictly before {@code otherTask}.
+         * Equal timestamps are not allowed; use {@link #completedBeforeOrEqualTo(String)} to permit them.
+         *
+         * @param otherTask the task that should complete after this one
+         * @return the parent {@link FluentEventAssertions} for further chaining
+         */
+        public FluentEventAssertions completedBefore(String otherTask) {
+            RecordedWorkflowEvent other = findTaskCompletedEvent(otherTask);
+            Assertions.assertThat(subject.getTimestamp())
+                    .as("Task '%s' should complete strictly before task '%s'", subjectName, otherTask)
+                    .isBefore(other.getTimestamp());
+            return parent;
+        }
+
+        /**
+         * Asserts that this task completed before or at the same time as {@code otherTask}.
+         * Use {@link #completedBefore(String)} to enforce strict ordering.
+         *
+         * @param otherTask the task that should complete after (or at the same time as) this one
+         * @return the parent {@link FluentEventAssertions} for further chaining
+         */
+        public FluentEventAssertions completedBeforeOrEqualTo(String otherTask) {
+            RecordedWorkflowEvent other = findTaskCompletedEvent(otherTask);
+            Assertions.assertThat(subject.getTimestamp())
+                    .as("Task '%s' should complete before or at the same time as task '%s'", subjectName, otherTask)
+                    .isBeforeOrEqualTo(other.getTimestamp());
+            return parent;
+        }
+
+        /**
+         * Asserts that this task completed strictly after {@code otherTask}.
+         * Equal timestamps are not allowed; use {@link #completedAfterOrEqualTo(String)} to permit them.
+         *
+         * @param otherTask the task that should complete before this one
+         * @return the parent {@link FluentEventAssertions} for further chaining
+         */
+        public FluentEventAssertions completedAfter(String otherTask) {
+            RecordedWorkflowEvent other = findTaskCompletedEvent(otherTask);
+            Assertions.assertThat(subject.getTimestamp())
+                    .as("Task '%s' should complete strictly after task '%s'", subjectName, otherTask)
+                    .isAfter(other.getTimestamp());
+            return parent;
+        }
+
+        /**
+         * Asserts that this task completed after or at the same time as {@code otherTask}.
+         * Use {@link #completedAfter(String)} to enforce strict ordering.
+         *
+         * @param otherTask the task that should complete before (or at the same time as) this one
+         * @return the parent {@link FluentEventAssertions} for further chaining
+         */
+        public FluentEventAssertions completedAfterOrEqualTo(String otherTask) {
+            RecordedWorkflowEvent other = findTaskCompletedEvent(otherTask);
+            Assertions.assertThat(subject.getTimestamp())
+                    .as("Task '%s' should complete after or at the same time as task '%s'", subjectName, otherTask)
+                    .isAfterOrEqualTo(other.getTimestamp());
+            return parent;
+        }
     }
 
-    /**
-     * Asserts that a task completed after or at the same time as another task.
-     * Allows equal timestamps. For strict ordering, use {@link #taskCompletedStrictlyAfter(String, String)}.
-     *
-     * @param firstTask the task that should complete after
-     * @param secondTask the task that should complete first
-     * @return this for method chaining
-     */
-    public FluentEventAssertions taskCompletedAfter(String firstTask, String secondTask) {
-        RecordedWorkflowEvent firstEvent = assertTaskCompleted(firstTask);
-        RecordedWorkflowEvent secondEvent = assertTaskCompleted(secondTask);
-        Assertions.assertThat(firstEvent.getTimestamp())
-                .as("Task '%s' should complete after or at the same time as task '%s'", firstTask, secondTask)
-                .isAfterOrEqualTo(secondEvent.getTimestamp());
-        return this;
-    }
-
-    /**
-     * Asserts that a task completed strictly after another task, using strict timestamp comparison.
-     * Unlike {@link #taskCompletedAfter(String, String)}, this method does not allow equal timestamps.
-     *
-     * @param firstTask the task that should complete after
-     * @param secondTask the task that should complete first
-     * @return this for method chaining
-     */
-    public FluentEventAssertions taskCompletedStrictlyAfter(String firstTask, String secondTask) {
-        RecordedWorkflowEvent firstEvent = assertTaskCompleted(firstTask);
-        RecordedWorkflowEvent secondEvent = assertTaskCompleted(secondTask);
-        Assertions.assertThat(firstEvent.getTimestamp())
-                .as("Task '%s' should complete strictly after task '%s'", firstTask, secondTask)
-                .isAfter(secondEvent.getTimestamp());
-        return this;
-    }
-
-    private RecordedWorkflowEvent assertTaskCompleted(String firstTask) {
+    private RecordedWorkflowEvent findTaskCompletedEvent(String taskName) {
         return events.stream()
                 .filter(e -> e.getType() == EventType.TASK_COMPLETED)
-                .filter(e -> e.getTaskName().map(firstTask::equals).orElse(false))
+                .filter(e -> e.getTaskName().map(taskName::equals).orElse(false))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
-                        "No TASK_COMPLETED event found for task: " + firstTask));
+                        "No TASK_COMPLETED event found for task: " + taskName));
     }
 
     /**

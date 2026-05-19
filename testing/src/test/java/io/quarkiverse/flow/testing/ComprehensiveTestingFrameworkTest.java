@@ -154,7 +154,7 @@ public class ComprehensiveTestingFrameworkTest {
             // Verify one task completed before another
             FluentEventAssertions.assertThat(workflowEventStore.getAll())
                     .workflowStarted() // Must call assertion first
-                    .taskCompletedBefore("firstTask", "secondTask");
+                    .assertTaskCompleted("firstTask").completedBeforeOrEqualTo("secondTask");
         }
     }
 
