@@ -3,12 +3,16 @@ package io.quarkiverse.flow.persistence.jpa;
 import java.io.Serializable;
 import java.util.Objects;
 
+import jakarta.persistence.Column;
+
 public class ProcessInstanceKey implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @Column(name = "instance_id")
     private String instanceId;
 
+    @Column(name = "application_id")
     private String applicationId;
 
     public ProcessInstanceKey() {

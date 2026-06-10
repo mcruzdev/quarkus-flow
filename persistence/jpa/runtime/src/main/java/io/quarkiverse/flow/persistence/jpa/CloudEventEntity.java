@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import org.hibernate.annotations.ColumnDefault;
 
@@ -14,15 +15,16 @@ import io.cloudevents.CloudEventData;
 import io.cloudevents.SpecVersion;
 
 @Entity
+@Table(name = "cloud_event_entity")
 public class CloudEventEntity {
 
     @Id
     private String id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "reg_id")
     private String regId;
 
-    @Column
+    @Column(name = "processed_flag")
     @ColumnDefault("false")
     private boolean processedFlag;
 
@@ -41,10 +43,10 @@ public class CloudEventEntity {
     @Column
     private OffsetDateTime time;
 
-    @Column
+    @Column(name = "data_schema")
     private URI dataSchema;
 
-    @Column
+    @Column(name = "data_content_type")
     private String dataContentType;
 
     @Column

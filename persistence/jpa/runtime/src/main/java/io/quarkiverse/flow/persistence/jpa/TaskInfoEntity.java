@@ -10,8 +10,10 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "task_info_entity")
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "task_type", discriminatorType = DiscriminatorType.INTEGER)
 public abstract class TaskInfoEntity {
@@ -20,8 +22,9 @@ public abstract class TaskInfoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
-            @JoinColumn(name = "applicationId", referencedColumnName = "applicationId", insertable = false, updatable = false),
-            @JoinColumn(name = "processInstanceId", referencedColumnName = "instanceId", insertable = false, updatable = false) })
+            @JoinColumn(name = "application_id", referencedColumnName = "application_id", insertable = false, updatable = false),
+            @JoinColumn(name = "process_instance_id", referencedColumnName = "instance_id", insertable = false, updatable = false)
+    })
     private ProcessInstanceEntity processInstance;
 
     public TaskInfoEntity() {
