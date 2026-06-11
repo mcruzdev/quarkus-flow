@@ -1,0 +1,44 @@
+package org.acme.http;
+
+import io.quarkiverse.flow.Flow;
+import io.serverlessworkflow.api.types.OAuth2AuthenticationData;
+import io.serverlessworkflow.api.types.Workflow;
+import io.serverlessworkflow.fluent.func.FuncWorkflowBuilder;
+import io.serverlessworkflow.fluent.func.dsl.FuncDSL;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import java.net.URI;
+import java.util.Map;
+
+@ApplicationScoped
+public class OpenAPIWithOAuth2Flow extends Flow {
+
+    @ConfigProperty(name = "quarkus.wiremock.devservices.port")
+    String wireMockPort;
+
+    @Inject
+    AuthServerConfig authServerConfig;
+
+    @Override
+    public Workflow descriptor() {
+
+        AuthServerConfig.Credentials authServer = authServerConfig.credentials().get("keycloakMock");
+
+        return FuncWorkflowBuilder.workflow()
+                .tasks(t -> {
+                    t.openapi("imageService", f ->
+                    // WireMock replaces the {{wireMockPort}} using response-template transformations
+                    f.document("http://localhost:" + wireMockPort + "/openapi/openapi-oauth2.yaml?wireMockPort=" + wireMockPort)
+                            .operation("listImages")
+                            .parameters(Map.of(
+                                    "Accept", "application/json"))
+                            .authentication(FuncDSL.oidc(
+                                    authServer.baseUrl(),
+                                    OAuth2AuthenticationData.OAuth2AuthenticationDataGrant.CLIENT_CREDENTIALS,
+                                    authServer.clientId(), authServer.clientSecret())));
+                })
+                .build();
+    }
+}

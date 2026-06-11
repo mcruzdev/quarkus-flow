@@ -7,6 +7,7 @@ Directory of end-to-end use case examples.
 - [Durable Workflows on Kubernetes](durable-workflows-k8s/README.md): Example of leasing acquiring when deploying workflows on Kubernetes to enable durable workflows use cases.
 - [Greeting Runner](greeting-runner/README.md): **Zero Java code** - A fully functional workflow microservice using only YAML definitions and the Runner extension. Demonstrates runtime workflow deployment via REST API.
 - [HTTP Basic Auth](http-basic-auth/README.md): Simple workflow exemplifying calling an HTTP service secured by Basic Auth.
+- [HTTP OAuth2 + OIDC](auth-oauth2-oidc/README.md): Calling OAuth2/OIDC protected HTTP and OpenAPI endpoints from a workflow — Client Credentials grant, caller-provided token propagation, multiple OAuth2 clients, and OpenAPI operations secured with OAuth2/OIDC.
 - [LangChain4j Agentic Workflow](langchain4j-agentic-workflow/README.md): Example of agentic workflows declared with LangChain4j annotations and executed as Quarkus Flow workflows with Dev UI support.
 - [Micrometer Prometheus](micrometer-prometheus/README.md): Example showing case how to configure, export, and visualize **workflow and task metrics**.
 - [Newsletter Drafter](newsletter-drafter/README.md): Human-in-the-loop Agentic Workflow example with LangChain4j.
