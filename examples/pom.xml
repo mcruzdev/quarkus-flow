@@ -27,7 +27,7 @@
         <module>order-fulfillment-compensation</module>
         <module>resilient-task-orchestrator</module>
         <module>greeting-runner</module>
-        <module>http-oauth2-oidc</module>
+        <module>auth-oauth2-oidc</module>
     </modules>
 
     <build>

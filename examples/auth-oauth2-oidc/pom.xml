@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.acme</groupId>
     <version>1.0.0-SNAPSHOT</version>
-    <artifactId>http-oauth2-oidc</artifactId>
+    <artifactId>auth-oauth2-oidc</artifactId>
     <name>Quarkus Flow :: Examples :: HTTP OAuth2 + OIDC</name>
 
     <properties>
@@ -162,4 +162,3 @@
         </profile>
     </profiles>
 </project>
-
