@@ -160,6 +160,98 @@ JPA allows you to store workflow state in a standard relational database (e.g., 
 
 You must also configure a Quarkus JDBC driver and datasource. See the link:https://quarkus.io/guides/datasource#configure-datasources[Quarkus Datasources Guide] for full instructions.
 
+==== Database Schema Migration
+
+Quarkus Flow can create the persistence tables automatically through the Quarkus Hibernate ORM link:https://quarkus.io/guides/hibernate-orm#quarkus-hibernate-orm_quarkus-hibernate-orm-database-generation[schema management configuration]:
+
+[source,properties]
+----
+quarkus.hibernate-orm.database.generation=update
+----
+
+This is convenient for development and testing. For production, prefer managing the schema explicitly with a migration tool such as link:https://quarkus.io/guides/flyway[Flyway].
+
+Add the Flyway extension (and the matching database support artifact, if required for your database):
+
+.pom.xml
+[source,xml]
+----
+<dependency>
+  <groupId>io.quarkus</groupId>
+  <artifactId>quarkus-flyway</artifactId>
+</dependency>
+----
+
+Enable migration at startup and disable Hibernate ORM schema generation in your `application.properties`:
+
+[source,properties]
+----
+quarkus.hibernate-orm.database.generation=none
+quarkus.flyway.enabled=true
+quarkus.flyway.migrate-at-start=true
+----
+
+Then create a migration script at `src/main/resources/db/migration/V1__create_tables.sql` with the three tables required by the JPA provider:
+
+[source,sql]
+----
+CREATE TABLE cloud_event_entity
+(
+    id                VARCHAR(255) NOT NULL,
+    reg_id            VARCHAR(255) NOT NULL,
+    source            VARCHAR(255) NOT NULL,
+    type              VARCHAR(255) NOT NULL,
+    subject           VARCHAR(255),
+    data_content_type VARCHAR(255),
+    data_schema       VARCHAR(255),
+    time              TIMESTAMP(6) WITH TIME ZONE,
+    data              VARBINARY,
+    extensions        VARBINARY,
+    processed_flag    BOOLEAN DEFAULT FALSE,
+    version           TINYINT      NOT NULL CHECK (version BETWEEN 0 AND 1),
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE process_instance_entity
+(
+    application_id     VARCHAR(255)                NOT NULL,
+    instance_id        VARCHAR(255)                NOT NULL,
+    workflow_name      VARCHAR(255)                NOT NULL,
+    workflow_namespace VARCHAR(255)                NOT NULL,
+    workflow_version   VARCHAR(255)                NOT NULL,
+    started_at         TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+    status             TINYINT CHECK (status BETWEEN 0 AND 6),
+    input              VARBINARY,
+    PRIMARY KEY (application_id, instance_id)
+);
+
+CREATE TABLE task_info_entity
+(
+    application_id      VARCHAR(255) NOT NULL,
+    process_instance_id VARCHAR(255) NOT NULL,
+    json_pointer        VARCHAR(255) NOT NULL,
+    iteration           INTEGER      NOT NULL,
+    task_type           INTEGER      NOT NULL CHECK (task_type IN (1, 2)),
+    is_end_node         BOOLEAN,
+    retry_attempt       SMALLINT,
+    instant             TIMESTAMP(6) WITH TIME ZONE,
+    next_position       VARCHAR(255),
+    context             VARBINARY,
+    model               VARBINARY,
+    PRIMARY KEY (iteration, application_id, json_pointer, process_instance_id),
+    CHECK (task_type <> 1 OR (is_end_node IS NOT NULL)),
+    CHECK (task_type <> 2 OR (retry_attempt IS NOT NULL)),
+    CONSTRAINT fk_task_process_instance
+        FOREIGN KEY (application_id, process_instance_id)
+            REFERENCES process_instance_entity (application_id, instance_id)
+);
+----
+
+[NOTE]
+====
+The script above uses H2 syntax. Adapt the column types to your target database — for example, on PostgreSQL use `BYTEA` instead of `VARBINARY` and `SMALLINT` instead of `TINYINT`.
+====
+
 === Option C: MVStore (Local file system)
 MVStore writes workflow state to a local file system file. This is an excellent, zero-infrastructure option for local development, testing, or single-node edge deployments.
 
