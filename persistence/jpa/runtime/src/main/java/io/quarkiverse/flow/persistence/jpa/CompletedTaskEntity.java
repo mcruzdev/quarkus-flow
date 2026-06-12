@@ -14,10 +14,13 @@ public class CompletedTaskEntity extends TaskInfoEntity {
 
     @Column
     private Instant instant;
+    @Column
     private WorkflowModel model;
     @Column
     private WorkflowModel context;
+    @Column
     private boolean isEndNode;
+    @Column
     private String nextPosition;
 
     public CompletedTaskEntity() {

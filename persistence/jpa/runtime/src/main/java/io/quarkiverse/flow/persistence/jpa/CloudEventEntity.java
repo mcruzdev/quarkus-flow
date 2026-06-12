@@ -6,7 +6,6 @@ import java.time.OffsetDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 import org.hibernate.annotations.ColumnDefault;
 
@@ -15,7 +14,6 @@ import io.cloudevents.CloudEventData;
 import io.cloudevents.SpecVersion;
 
 @Entity
-@Table(name = "cloud_event_entity")
 public class CloudEventEntity {
 
     @Id

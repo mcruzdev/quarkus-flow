@@ -1,5 +1,6 @@
 package io.quarkiverse.flow.persistence.jpa;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
@@ -10,6 +11,7 @@ public class RetriedTaskEntity extends TaskInfoEntity {
     public RetriedTaskEntity() {
     }
 
+    @Column
     private short retryAttempt;
 
     public RetriedTaskEntity(TaskInfoKey key, short retryAttempt) {

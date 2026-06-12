@@ -13,8 +13,6 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.OneToMany;
 
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import io.serverlessworkflow.impl.WorkflowDefinitionId;
 import io.serverlessworkflow.impl.WorkflowModel;
@@ -31,19 +29,22 @@ public class ProcessInstanceEntity {
     @Id
     private String applicationId;
 
+    @Column(nullable = false)
     private String workflowNamespace;
 
+    @Column(nullable = false)
     private String workflowName;
 
+    @Column(nullable = false)
     private String workflowVersion;
 
-    @Column(nullable = true)
+    @Column
     private WorkflowStatus status;
 
+    @Column(nullable = false)
     private Instant startedAt;
 
     @Basic(fetch = FetchType.LAZY)
-    @JdbcTypeCode(SqlTypes.BINARY)
     private WorkflowModel input;
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, mappedBy = "processInstance")
