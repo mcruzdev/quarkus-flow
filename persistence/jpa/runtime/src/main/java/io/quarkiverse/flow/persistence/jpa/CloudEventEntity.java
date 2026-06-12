@@ -21,10 +21,9 @@ public class CloudEventEntity {
     @Id
     private String id;
 
-    @Column(nullable = false, name = "reg_id")
+    @Column(nullable = false)
     private String regId;
 
-    @Column(name = "processed_flag")
     @ColumnDefault("false")
     private boolean processedFlag;
 
@@ -43,10 +42,8 @@ public class CloudEventEntity {
     @Column
     private OffsetDateTime time;
 
-    @Column(name = "data_schema")
     private URI dataSchema;
 
-    @Column(name = "data_content_type")
     private String dataContentType;
 
     @Column
