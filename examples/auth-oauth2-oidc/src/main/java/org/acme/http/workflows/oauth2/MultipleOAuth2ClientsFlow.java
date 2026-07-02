@@ -1,5 +1,6 @@
 package org.acme.http.workflows.oauth2;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkiverse.flow.Flow;
 import io.quarkus.logging.Log;
 import io.serverlessworkflow.api.types.OAuth2AuthenticationData.OAuth2AuthenticationDataGrant;
@@ -8,9 +9,12 @@ import io.serverlessworkflow.api.types.Workflow;
 import io.serverlessworkflow.fluent.func.FuncWorkflowBuilder;
 import io.serverlessworkflow.fluent.func.dsl.FuncDSL;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 @ApplicationScoped
 public class MultipleOAuth2ClientsFlow extends Flow {
@@ -23,6 +27,8 @@ public class MultipleOAuth2ClientsFlow extends Flow {
 
     @ConfigProperty(name = "jahoo.baseUrl")
     String jahooBaseUrl;
+    @Inject
+    ObjectMapper objectMapper;
 
     @Override
     public Workflow descriptor() {
@@ -65,10 +71,7 @@ public class MultipleOAuth2ClientsFlow extends Flow {
                                 FuncDSL.http("getEmailsFromJahoo").GET()
                                         .header("Accept", "application/json")
                                         .uri(URI.create(wireMock + "/jahoo/inbox"), FuncDSL.use("jahoo"))),
-                        FuncDSL.function("merge", o -> {
-                            Log.info("Merging emails: " + o);
-                            return o;
-                        }))
+                        FuncDSL.function("merge", o -> o))
                 .build();
     }
 }

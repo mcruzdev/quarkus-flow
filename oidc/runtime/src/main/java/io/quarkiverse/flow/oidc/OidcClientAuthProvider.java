@@ -1,7 +1,6 @@
 package io.quarkiverse.flow.oidc;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,14 +39,11 @@ public final class OidcClientAuthProvider implements AuthProvider {
     private final WorkflowApplication application;
     private final OAuth2Policy policy;
     private final OidcClientFactory clientFactory;
-    private final Duration requestTimeout;
 
-    public OidcClientAuthProvider(WorkflowApplication application, OAuth2Policy policy, OidcClientFactory clientFactory,
-            Duration requestTimeout) {
+    public OidcClientAuthProvider(WorkflowApplication application, OAuth2Policy policy, OidcClientFactory clientFactory) {
         this.application = application;
         this.policy = policy;
         this.clientFactory = clientFactory;
-        this.requestTimeout = requestTimeout;
     }
 
     @Override
@@ -60,12 +56,12 @@ public final class OidcClientAuthProvider implements AuthProvider {
         final OAuth2AuthenticationData data = policy.data();
         final ResolvedConfig resolved = resolveConfig(workflow, task, model, data);
 
-        final OidcClient client = clientFactory.get(resolved.cacheKey, () -> buildConfig(resolved), requestTimeout);
+        final OidcClient client = clientFactory.get(resolved.cacheKey, () -> buildConfig(resolved));
 
         final Map<String, String> dynamicParams = dynamicParams(workflow, task, model, data);
         try {
             final Tokens tokens = (dynamicParams.isEmpty() ? client.getTokens() : client.getTokens(dynamicParams))
-                    .await().atMost(requestTimeout);
+                    .await().indefinitely();
             return tokens.getAccessToken();
         } catch (Exception e) {
             throw new IllegalStateException(
@@ -236,7 +232,6 @@ public final class OidcClientAuthProvider implements AuthProvider {
             case REFRESH_TOKEN -> OidcClientConfig.Grant.Type.REFRESH;
             case AUTHORIZATION_CODE -> OidcClientConfig.Grant.Type.CODE;
             case URN_IETF_PARAMS_OAUTH_GRANT_TYPE_TOKEN_EXCHANGE -> OidcClientConfig.Grant.Type.EXCHANGE;
-            default -> throw new IllegalStateException("Flow OIDC: unsupported OAuth2 grant: " + grant);
         };
     }
 

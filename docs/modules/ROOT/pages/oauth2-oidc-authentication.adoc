@@ -19,11 +19,9 @@ A complete, runnable project covering every scenario below lives in `examples/au
 * A Quarkus application with xref:getting-started.adoc[Quarkus Flow set up].
 * Familiarity with xref:http-openapi-tasks.adoc[HTTP and OpenAPI tasks] and xref:secrets.adoc[secrets].
 
-== 1. How token negotiation works
+== 1. Add the OIDC client dependency
 
-Token negotiation is performed by the **`quarkus-flow-oidc`** extension, which delegates to https://quarkus.io/guides/security-openid-connect-client-reference[`quarkus-oidc-client`].
-
-You do **not** depend on `quarkus-flow-oidc` directly. It is a conditional dependency of `quarkus-flow` and activates automatically as soon as `quarkus-oidc-client` is on the classpath:
+Add `quarkus-oidc-client` to your project. Quarkus Flow's OIDC integration activates automatically when this dependency is on the classpath:
 
 [source,xml]
 ----
@@ -33,18 +31,30 @@ You do **not** depend on `quarkus-flow-oidc` directly. It is a conditional depen
 </dependency>
 ----
 
-With the extension active, the responsibility split is:
+You declare which grant and credentials to use on the call; Quarkus Flow obtains the token, caches it, refreshes it when needed, and adds the `Authorization` header. To opt out, set `quarkus.flow.oidc.enabled=false` (see the <<configuration-reference>>).
 
-* **You** declare *which* grant and *which* credentials to use on the call.
-* **Quarkus Flow** obtains the token, caches it (one client per resolved policy), refreshes it when needed, and adds the `Authorization` header.
+.When is a token cached?
+[%collapsible]
+====
+Quarkus Flow creates an `OidcClient` lazily on the first call that needs it and keeps it for the lifetime of the application. Every subsequent call whose resolved policy matches the same cache key reuses that client — and therefore its token cache and automatic refresh logic.
 
-If you ever need to opt out and let the Serverless Workflow SDK negotiate tokens itself, set `quarkus.flow.oidc.enabled=false`. See the <<configuration-reference>>.
+The cache key covers: authority, token endpoint path, OAuth2-vs-OIDC flag, client ID, client secret, client-authentication method, grant type, scopes, audiences, and username/password (for the Password grant).
 
-== 2. Two ways to attach an authentication
+Two call sites share a cached client **only when every field matches**. If any field differs — even a single scope — a separate `OidcClient` is created with its own independent token lifecycle:
 
-An authentication can be attached **inline** on a single call, or declared **once** under `use(...)` and referenced by name from many calls.
+* **Same authority, same client, same grant, same scopes** → one cached client, one token.
+* **Same authority, same client, different scopes** → two cached clients, two independent tokens.
+* **Same authority, different token endpoint paths** → two cached clients, even if everything else matches.
+* **`oauth2(...)` vs `oidc(...)` for the same authority** → two cached clients, because the OAuth2-vs-OIDC flag differs.
 
-Inline — best for a one-off call:
+All cached clients are closed automatically on application shutdown.
+====
+
+== 2. Attach an authentication to a call
+
+You can attach an authentication **inline** on a single call, or declare it **once** under `use(...)` and reference it by name from many calls.
+
+=== Inline on a single call
 
 [source,java]
 ----
@@ -58,7 +68,9 @@ http("listImages")
 ----
 <1> `oauth2(...)` attaches the authentication directly to this call. Use `oidc(...)` for an OpenID Connect client.
 
-Declared under `use(...)` and referenced by name — best when several calls share the same authority:
+=== Declare once under `use(...)` and reference by name
+
+If several calls share the same authority, declare the authentication once and reference it by name:
 
 [source,java]
 ----
@@ -77,9 +89,10 @@ workflow("orders")
 ----
 <1> `use("inventory")` references the named authentication declared above.
 
-== 3. Client Credentials grant
+[[client-credentials-grant]]
+== 3. Use the Client Credentials grant
 
-The most common machine-to-machine grant. The workflow asks the authorization server for a token and uses it to call the service. Credentials are read from xref:secrets.adoc[secrets] with `${ $secret.* }` expressions rather than hardcoded:
+If you need machine-to-machine authentication, use the Client Credentials grant. Read credentials from xref:secrets.adoc[secrets] with `${ $secret.* }` expressions rather than hardcoding them:
 
 [source,java]
 ----
@@ -124,9 +137,9 @@ clientCredentials.baseUrl=https://auth.example.com/realms/test/protocol/openid-c
 
 In production, the same secret names resolve through any Quarkus https://quarkus.io/guides/credentials-provider[`CredentialsProvider`] (HashiCorp Vault, Kubernetes Secrets, …) without changing the workflow code. See xref:secrets.adoc[Resolve secrets securely] for details.
 
-== 4. OIDC client
+== 4. Use an OIDC client
 
-Identical to Client Credentials, but built with `oidc(...)` so the authentication targets an OpenID Connect client. Use this when the authorization server is an OIDC provider:
+If the authorization server is an OpenID Connect provider, use `oidc(...)` instead of `oauth2(...)`:
 
 [source,java]
 ----
@@ -140,9 +153,9 @@ FuncDSL.http("listImages")
 ----
 <1> When a secret key contains a dash, quote it inside the JQ path: `${ $secret.oidcClient."client-id" }`.
 
-== 5. Password grant
+== 5. Use the Password grant
 
-The Resource Owner Password grant supplies a username and password alongside the client credentials. Use the full `oauth2(...)` builder so you can set every field:
+If the service requires a username and password alongside client credentials, use the full `oauth2(...)` builder:
 
 [source,java]
 ----
@@ -158,9 +171,9 @@ FuncDSL.http()
                         .password("${ $secret.\"password-grant\".password }")));
 ----
 
-== 6. Token Exchange grant (RFC 8693)
+== 6. Use Token Exchange (RFC 8693)
 
-Token Exchange swaps a subject (and optional actor) token for a new one scoped to a target audience. The builder exposes `subject(...)`, `actor(...)`, `scopes(...)`, and `audiences(...)`:
+If you need to exchange a subject (and optional actor) token for a new one scoped to a target audience, use the token-exchange grant:
 
 [source,java]
 ----
@@ -177,11 +190,9 @@ FuncDSL.oauth2(oauth2 -> oauth2
         .authority(baseUrl));
 ----
 
-The subject and actor tokens are passed to the authorization server as dynamic grant parameters at token-request time.
+== 7. Call multiple authorization servers
 
-== 7. Multiple authorization servers in one workflow
-
-When a workflow talks to several services, each with its own authorization server, declare every authentication **once** under `use(...)` and reference them by name. Each authentication can target a different token endpoint, authority, client-authentication method, and grant:
+If your workflow calls services protected by different authorization servers, declare each authentication under `use(...)` and reference them by name:
 
 [source,java]
 ----
@@ -214,9 +225,9 @@ return FuncWorkflowBuilder.workflow("multiple-oauth2-clients", "quarkus-flow")
 <1> Declare the secret groups for both clients together.
 <2> `fork` runs the two authenticated calls in parallel; each picks up its own token.
 
-== 8. OpenAPI operations
+== 8. Authenticate OpenAPI operations
 
-The same authentications work on xref:http-openapi-tasks.adoc[OpenAPI tasks]. When an OpenAPI document declares an OAuth2/OIDC security scheme, supply the credentials through `oidc(...)` (or `oauth2(...)`):
+If you use xref:http-openapi-tasks.adoc[OpenAPI tasks], supply the credentials through `oidc(...)` (or `oauth2(...)`):
 
 [source,java]
 ----
@@ -232,19 +243,9 @@ FuncWorkflowBuilder.workflow()
         .build();
 ----
 
-== 9. Providing credentials
+== 9. Provide credentials
 
-Following xref:secrets.adoc[the secrets model], a secret name maps to a flat group of properties. For local development and tests you can supply them straight from `application.properties`:
-
-[source,properties]
-.application.properties
-----
-clientCredentials.clientId=quarkus-flow
-clientCredentials.clientSecret=dummy-client-secret
-clientCredentials.baseUrl=https://auth.example.com/realms/test/protocol/openid-connect/token
-----
-
-In production, the same handles resolve through any Quarkus `CredentialsProvider` (HashiCorp Vault, Kubernetes Secrets, …) without changing the workflow. See xref:secrets.adoc[Resolve secrets securely].
+Credentials are supplied through xref:secrets.adoc[secrets] as shown in <<client-credentials-grant, section 3>>. In production, the same secret names resolve through any Quarkus https://quarkus.io/guides/credentials-provider[`CredentialsProvider`] (HashiCorp Vault, Kubernetes Secrets, …) without changing the workflow code. See xref:secrets.adoc[Resolve secrets securely] for details.
 
 [[configuration-reference]]
 == Configuration reference

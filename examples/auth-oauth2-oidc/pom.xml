@@ -14,7 +14,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
-        <quarkus.platform.version>3.33.2</quarkus.platform.version>
+        <quarkus.platform.version>3.37.0</quarkus.platform.version>
         <quarkus.flow.version>1.0.0-SNAPSHOT</quarkus.flow.version>
         <quarkus.wiremock.version>1.5.1</quarkus.wiremock.version>
         <surefire-plugin.version>3.5.6</surefire-plugin.version>
@@ -39,10 +39,6 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkiverse.wiremock</groupId>
@@ -75,16 +71,6 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${version.assertj}</version>
-            <scope>test</scope>
-        </dependency>
-
-
-        <!-- Can be ignored / Used to run Quarkus Flow project in parallel -->
-        <!-- On real use cases this can be safely removed -->
-        <dependency>
-            <groupId>io.quarkiverse.flow</groupId>
-            <artifactId>quarkus-flow-deployment</artifactId>
-            <version>${quarkus.flow.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

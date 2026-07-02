@@ -35,7 +35,7 @@ public class FlowOidcAuthCustomizer implements WorkflowApplicationBuilderCustomi
             return;
         }
         this.clientFactory = new OidcClientFactory(oidcClients);
-        builder.withAuthProviderFactory(new OidcAuthProviderFactory(clientFactory, config.requestTimeout()));
+        builder.withAuthProviderFactory(new OidcAuthProviderFactory(clientFactory));
         LOG.info("Flow OIDC: OAuth2/OIDC token negotiation delegated to quarkus-oidc-client.");
     }
 

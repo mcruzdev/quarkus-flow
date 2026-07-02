@@ -151,22 +151,6 @@
             desc: 'Drives an OpenAPI operation secured with an OAuth2 / openIdConnect security scheme.',
         },
         {
-            id: 'repos',
-            title: 'User Token (valid)',
-            method: 'GET',
-            path: '/quarkus-flow/repos',
-            desc: 'Propagates a caller-provided bearer token to the downstream repos service. A token starting with "A" is accepted.',
-            header: 'Bearer A.abc.signature',
-        },
-        {
-            id: 'invalid-token',
-            title: 'User Token (invalid)',
-            method: 'GET',
-            path: '/quarkus-flow/invalid-token/repos',
-            desc: 'Propagates an invalid bearer token downstream. A token starting with "B" is rejected, mapping the downstream 401 to an HTTP 401.',
-            header: 'Bearer B.abc.signature',
-        },
-        {
             id: 'read-all-emails',
             title: 'Multiple OAuth2 Clients',
             method: 'GET',

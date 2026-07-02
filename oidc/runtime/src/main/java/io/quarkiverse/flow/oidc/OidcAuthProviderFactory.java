@@ -1,6 +1,5 @@
 package io.quarkiverse.flow.oidc;
 
-import java.time.Duration;
 import java.util.Optional;
 
 import io.serverlessworkflow.api.types.AuthenticationPolicyUnion;
@@ -26,11 +25,9 @@ public final class OidcAuthProviderFactory implements AuthProviderFactory {
 
     private final AuthProviderFactory delegate = DefaultAuthProviderFactory.factory();
     private final OidcClientFactory clientFactory;
-    private final Duration requestTimeout;
 
-    public OidcAuthProviderFactory(OidcClientFactory clientFactory, Duration requestTimeout) {
+    public OidcAuthProviderFactory(OidcClientFactory clientFactory) {
         this.clientFactory = clientFactory;
-        this.requestTimeout = requestTimeout;
     }
 
     @Override
@@ -51,8 +48,7 @@ public final class OidcAuthProviderFactory implements AuthProviderFactory {
 
     private Optional<AuthProvider> build(WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth) {
         return OAuth2Policy.from(union(definition, auth))
-                .map(policy -> new OidcClientAuthProvider(definition.application(), policy, clientFactory,
-                        requestTimeout));
+                .map(policy -> new OidcClientAuthProvider(definition.application(), policy, clientFactory));
     }
 
     private AuthenticationPolicyUnion union(WorkflowDefinition definition, ReferenceableAuthenticationPolicy auth) {

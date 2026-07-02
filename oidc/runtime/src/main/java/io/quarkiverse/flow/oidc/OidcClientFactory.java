@@ -1,6 +1,5 @@
 package io.quarkiverse.flow.oidc;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -32,8 +31,8 @@ public final class OidcClientFactory implements AutoCloseable {
         this.oidcClients = oidcClients;
     }
 
-    public OidcClient get(CacheKey key, Supplier<OidcClientConfig> configSupplier, Duration buildTimeout) {
-        return cache.computeIfAbsent(key, k -> oidcClients.newClient(configSupplier.get()).await().atMost(buildTimeout));
+    public OidcClient get(CacheKey key, Supplier<OidcClientConfig> configSupplier) {
+        return cache.computeIfAbsent(key, k -> oidcClients.newClient(configSupplier.get()).await().indefinitely());
     }
 
     @Override
