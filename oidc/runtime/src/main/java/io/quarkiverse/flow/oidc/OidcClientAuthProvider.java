@@ -1,12 +1,8 @@
 package io.quarkiverse.flow.oidc;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -64,7 +60,7 @@ public final class OidcClientAuthProvider implements AuthProvider {
         final OAuth2AuthenticationData data = policy.data();
         final ResolvedConfig resolved = resolveConfig(workflow, task, model, data);
 
-        final OidcClient client = clientFactory.get(resolved.cacheKey(), () -> buildConfig(resolved), requestTimeout);
+        final OidcClient client = clientFactory.get(resolved.cacheKey, () -> buildConfig(resolved), requestTimeout);
 
         final Map<String, String> dynamicParams = dynamicParams(workflow, task, model, data);
         try {
@@ -105,14 +101,14 @@ public final class OidcClientAuthProvider implements AuthProvider {
             password = resolve(workflow, task, model, data.getPassword());
         }
 
-        final String cacheKey = cacheKey(authority, tokenPath, oidc, clientId, secretMethod, grant, scopes, audiences,
+        final CacheKey cacheKey = new CacheKey(authority, tokenPath, oidc, clientId, secretMethod, grant, scopes, audiences,
                 clientSecret, username, password);
         return new ResolvedConfig(cacheKey, authority, tokenPath, clientId, clientSecret, secretMethod, grant, scopes,
                 audiences, username, password);
     }
 
     private OidcClientConfig buildConfig(ResolvedConfig config) {
-        final OidcClientConfigBuilder builder = new OidcClientConfigBuilder().id(config.cacheKey());
+        final OidcClientConfigBuilder builder = new OidcClientConfigBuilder().id(config.cacheKey.configId());
 
         builder.authServerUrl(config.authority()).discoveryEnabled(false).tokenPath(config.tokenPath());
 
@@ -230,42 +226,6 @@ public final class OidcClientAuthProvider implements AuthProvider {
         };
     }
 
-    /**
-     * Builds the cache key identifying the {@link OidcClient}. The key covers <em>every</em> value that
-     * {@link #buildConfig(ResolvedConfig)} bakes into the {@link OidcClientConfig} — authority, token endpoint, the
-     * OAuth2-vs-OIDC flag, client id, client-authentication method, grant, scopes, audiences and the credential material
-     * (client secret, and the password-grant username/password). Two policies must reuse a client only when all of those
-     * match, otherwise the second policy would silently negotiate against the first one's endpoint/credentials. The
-     * credential material is folded into a SHA-256 digest so it never appears verbatim in the client id (which surfaces in
-     * logs/metrics), while still distinguishing policies that differ only by secret.
-     */
-    private static String cacheKey(String authority, String tokenPath, boolean openIdConnect, String clientId,
-            Credentials.Secret.Method secretMethod, OAuth2AuthenticationDataGrant grant, List<String> scopes,
-            List<String> audiences, String clientSecret, String username, String password) {
-        final String canonical = String.join("\n",
-                String.valueOf(authority),
-                String.valueOf(tokenPath),
-                Boolean.toString(openIdConnect),
-                String.valueOf(clientId),
-                secretMethod == null ? "" : secretMethod.name(),
-                grant == null ? "" : grant.value(),
-                String.valueOf(scopes),
-                String.valueOf(audiences),
-                String.valueOf(clientSecret),
-                String.valueOf(username),
-                String.valueOf(password));
-        return "flow-oidc-" + sha256Hex(canonical);
-    }
-
-    private static String sha256Hex(String value) {
-        try {
-            final byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
-    }
-
     private static OidcClientConfig.Grant.Type grantType(OAuth2AuthenticationDataGrant grant) {
         if (grant == null) {
             return OidcClientConfig.Grant.Type.CLIENT;
@@ -284,7 +244,7 @@ public final class OidcClientAuthProvider implements AuthProvider {
      * The fully resolved view of a policy: every expression has been evaluated and the cache key computed, so the cached
      * {@link OidcClient} is built from immutable values rather than from the live workflow context.
      */
-    private record ResolvedConfig(String cacheKey, String authority, String tokenPath, String clientId,
+    private record ResolvedConfig(CacheKey cacheKey, String authority, String tokenPath, String clientId,
             String clientSecret, Credentials.Secret.Method secretMethod, OAuth2AuthenticationDataGrant grant,
             List<String> scopes, List<String> audiences, String username, String password) {
     }
