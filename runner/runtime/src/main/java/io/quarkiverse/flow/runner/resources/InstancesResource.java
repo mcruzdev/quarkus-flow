@@ -1,14 +1,11 @@
 package io.quarkiverse.flow.runner.resources;
 
-import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -60,9 +57,6 @@ import io.serverlessworkflow.impl.WorkflowStatus;
 @SecurityRequirement(name = "BearerAuth")
 public class InstancesResource {
 
-    static final Set<WorkflowStatus> TERMINAL_STATUSES = EnumSet.of(
-            WorkflowStatus.COMPLETED, WorkflowStatus.FAULTED, WorkflowStatus.CANCELLED);
-
     @Inject
     WorkflowApplication application;
 
@@ -94,10 +88,7 @@ public class InstancesResource {
     @APIResponse(responseCode = "401", description = "Authentication required - missing or invalid credentials")
     @APIResponse(responseCode = "403", description = "Access denied")
     public Response listActiveInstances(
-            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") WorkflowStatus status) {
-
-        validateIfTerminalStatus(status);
-
+            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") @ActiveStatus WorkflowStatus status) {
         Stream<Map.Entry<WorkflowDefinitionId, WorkflowDefinition>> definitions = application.workflowDefinitions()
                 .entrySet().stream();
 
@@ -110,14 +101,9 @@ public class InstancesResource {
                 definitions = definitions.filter(e -> authorizedNamespaces.contains(e.getKey().namespace()));
             }
         }
-
-        List<InstanceSnapshot> instances = definitions
-                .flatMap(e -> e.getValue().activeInstances().stream()
-                        .filter(instance -> status == null || status == instance.status())
-                        .map(instance -> toSnapshot(e.getKey(), instance)))
-                .toList();
-
-        return Response.ok(new ActiveInstancesResponse(application.id(), instances)).build();
+        return Response.ok(new ActiveInstancesResponse(application.id(), definitions
+                .flatMap(e -> filterByStatus(e.getKey(), e.getValue().activeInstances().stream(), status))
+                .toList())).build();
     }
 
     @GET
@@ -135,7 +121,7 @@ public class InstancesResource {
     public Response listActiveInstancesForWorkflow(
             @Parameter(description = "Workflow namespace (access validated if namespace authorization enabled)", required = true) @PathParam("namespace") String namespace,
             @Parameter(description = "Workflow name", required = true) @PathParam("name") String name,
-            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") WorkflowStatus status) {
+            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") @ActiveStatus WorkflowStatus status) {
 
         return listActiveInstancesForDefinition(
                 new WorkflowDefinitionId(namespace, name, WorkflowDefinitionLookup.LATEST), status);
@@ -157,49 +143,25 @@ public class InstancesResource {
             @Parameter(description = "Workflow namespace (access validated if namespace authorization enabled)", required = true) @PathParam("namespace") String namespace,
             @Parameter(description = "Workflow name", required = true) @PathParam("name") String name,
             @Parameter(description = "Workflow version", required = true) @PathParam("version") String version,
-            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") WorkflowStatus status) {
+            @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") @ActiveStatus WorkflowStatus status) {
 
         return listActiveInstancesForDefinition(new WorkflowDefinitionId(namespace, name, version), status);
     }
 
     private Response listActiveInstancesForDefinition(WorkflowDefinitionId id, WorkflowStatus status) {
-
-        validateIfTerminalStatus(status);
-
         WorkflowDefinition definition = definitionLookup.find(id);
-        if (definition == null) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Workflow '" + id + "' not found")
-                    .build();
-        }
-
-        List<InstanceSnapshot> instances = definition.activeInstances().stream()
-                .filter(instance -> status == null || status == instance.status())
-                .map(instance -> toSnapshot(definition.id(), instance))
-                .toList();
-
-        return Response.ok(new ActiveInstancesResponse(application.id(), instances)).build();
+        return definition == null ? Response.status(Response.Status.NOT_FOUND)
+                .entity("Workflow '" + id + "' not found")
+                .build()
+                : Response.ok(new ActiveInstancesResponse(application.id(),
+                        filterByStatus(id, definition.activeInstances().stream(), status).toList())).build();
     }
 
-    private static InstanceSnapshot toSnapshot(WorkflowDefinitionId id, WorkflowInstance instance) {
-        return new InstanceSnapshot(
-                instance.id(),
-                id.name(),
-                id.namespace(),
-                id.version(),
-                instance.status(),
-                instance.startedAt());
-    }
-
-    /**
-     * Rejects terminal statuses as filter values; {@code null} (no filter) is always allowed.
-     *
-     * @throws BadRequestException if the status is a terminal status
-     */
-    private void validateIfTerminalStatus(WorkflowStatus status) {
-        if (status != null && TERMINAL_STATUSES.contains(status)) {
-            throw new BadRequestException("Terminal status '" + status
-                    + "' is not a valid filter — completed, faulted, and cancelled instances are not tracked in the active registry");
+    private static Stream<InstanceSnapshot> filterByStatus(WorkflowDefinitionId definitionId,
+            Stream<WorkflowInstance> instances, WorkflowStatus status) {
+        if (status != null) {
+            instances = instances.filter(instance -> instance.status() == status);
         }
+        return instances.map(instance -> InstanceSnapshot.from(definitionId, instance));
     }
 }
