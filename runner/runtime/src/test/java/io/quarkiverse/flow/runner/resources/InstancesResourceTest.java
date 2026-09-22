@@ -45,19 +45,11 @@ class InstancesResourceTest {
         mockApplication = mock(WorkflowApplication.class);
         resource.application = mockApplication;
 
-        WorkflowDefinitionLookup lookup = new WorkflowDefinitionLookup();
-        lookup.application = mockApplication;
-        resource.definitionLookup = lookup;
-
         mockNamespaceAuth = mock(NamespaceAuthorizationService.class);
         config = mock(FlowRunnerConfig.class);
         FlowRunnerConfig.Security securityConfig = mock(FlowRunnerConfig.Security.class);
         namespaceConfig = mock(FlowRunnerConfig.Security.Namespace.class);
         securityIdentity = mock(SecurityIdentity.class);
-
-        resource.namespaceAuth = mockNamespaceAuth;
-        resource.config = config;
-        resource.securityIdentity = securityIdentity;
 
         when(config.security()).thenReturn(securityConfig);
         when(securityConfig.namespace()).thenReturn(namespaceConfig);
@@ -65,6 +57,13 @@ class InstancesResourceTest {
         when(securityIdentity.hasRole(AuthzConsts.ROLE_ADMIN)).thenReturn(false);
         // Default authorization for tests not specifically testing restrictions.
         when(mockNamespaceAuth.getAuthorizedNamespaces()).thenReturn(Set.of("*"));
+
+        WorkflowDefinitionLookup lookup = new WorkflowDefinitionLookup();
+        lookup.application = mockApplication;
+        lookup.namespaceAuth = mockNamespaceAuth;
+        lookup.config = config;
+        lookup.securityIdentity = securityIdentity;
+        resource.definitionLookup = lookup;
 
         when(mockApplication.id()).thenReturn("runner-pod-0");
         when(mockApplication.workflowDefinitions()).thenReturn(Map.of());
@@ -201,7 +200,8 @@ class InstancesResourceTest {
 
         Response response = resource.listActiveInstances(null);
 
-        assertThat(body(response).instances()).isEmpty();
+        assertThat(body(response).instances()).hasSize(1);
+        assertThat(body(response).instances().get(0).workflowNamespace()).isEqualTo("ns1");
     }
 
     // --- tests: GET /q/flow/{namespace}/{name}/instances (latest version) ---

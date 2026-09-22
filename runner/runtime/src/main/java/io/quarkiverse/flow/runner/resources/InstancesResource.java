@@ -1,7 +1,5 @@
 package io.quarkiverse.flow.runner.resources;
 
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import jakarta.annotation.security.RolesAllowed;
@@ -22,13 +20,10 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.security.SecurityRequirement;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import io.quarkiverse.flow.runner.FlowRunnerConfig;
 import io.quarkiverse.flow.runner.model.ActiveInstancesResponse;
 import io.quarkiverse.flow.runner.model.InstanceSnapshot;
 import io.quarkiverse.flow.runner.security.AuthzConsts;
 import io.quarkiverse.flow.runner.security.FlowRunnerEndpoint;
-import io.quarkiverse.flow.runner.security.NamespaceAuthorizationService;
-import io.quarkus.security.identity.SecurityIdentity;
 import io.serverlessworkflow.impl.WorkflowApplication;
 import io.serverlessworkflow.impl.WorkflowDefinition;
 import io.serverlessworkflow.impl.WorkflowDefinitionId;
@@ -63,15 +58,6 @@ public class InstancesResource {
     @Inject
     WorkflowDefinitionLookup definitionLookup;
 
-    @Inject
-    NamespaceAuthorizationService namespaceAuth;
-
-    @Inject
-    FlowRunnerConfig config;
-
-    @Inject
-    SecurityIdentity securityIdentity;
-
     @GET
     @Path("/instances")
     @Produces(MediaType.APPLICATION_JSON)
@@ -89,21 +75,8 @@ public class InstancesResource {
     @APIResponse(responseCode = "403", description = "Access denied")
     public Response listActiveInstances(
             @Parameter(description = "Filter by workflow status (optional). Only non-terminal values accepted: PENDING, RUNNING, WAITING, SUSPENDED") @QueryParam("status") @ActiveStatus WorkflowStatus status) {
-        Stream<Map.Entry<WorkflowDefinitionId, WorkflowDefinition>> definitions = application.workflowDefinitions()
-                .entrySet().stream();
-
-        if (config.security().namespace().validate() && !securityIdentity.hasRole(AuthzConsts.ROLE_ADMIN)) {
-            Set<String> authorizedNamespaces = namespaceAuth.getAuthorizedNamespaces();
-
-            if (authorizedNamespaces == null || authorizedNamespaces.isEmpty()) {
-                definitions = Stream.empty();
-            } else if (!authorizedNamespaces.contains(AuthzConsts.ALL_NAMESPACES)) {
-                definitions = definitions.filter(e -> authorizedNamespaces.contains(e.getKey().namespace()));
-            }
-        }
-        return Response.ok(new ActiveInstancesResponse(application.id(), definitions
-                .flatMap(e -> filterByStatus(e.getKey(), e.getValue().activeInstances().stream(), status))
-                .toList())).build();
+        return Response.ok(new ActiveInstancesResponse(application.id(), definitionLookup.definitions().stream()
+                .flatMap(e -> filterByStatus(e.id(), e.activeInstances().stream(), status)).toList())).build();
     }
 
     @GET
